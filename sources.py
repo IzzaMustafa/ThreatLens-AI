@@ -213,12 +213,7 @@ def get_whois_data(input_type, value):
 
 def calculate_fallback_risk(virustotal):
 
-    # --------------------------------------------------------
-    # INSUFFICIENT DATA
-    # --------------------------------------------------------
-
     if not virustotal.get("success"):
-
         return {
             "score": None,
             "verdict": "INSUFFICIENT DATA",
@@ -230,38 +225,17 @@ def calculate_fallback_risk(virustotal):
     harmless = virustotal.get("harmless", 0)
     undetected = virustotal.get("undetected", 0)
 
-    total = (
-        malicious
-        + suspicious
-        + harmless
-        + undetected
-    )
+    total = malicious + suspicious + harmless + undetected
 
     if total == 0:
-
         return {
             "score": None,
             "verdict": "INSUFFICIENT DATA",
             "confidence": "Low"
         }
 
-
-    # --------------------------------------------------------
-    # RISK SCORE
-    # --------------------------------------------------------
-    # Malicious detections have the strongest influence.
-    # Suspicious detections have a smaller influence.
-    #
-    # The score is NOT a probability.
-    # It is an assessment based on VirusTotal detections.
-
-    malicious_percentage = (
-        malicious / total
-    ) * 100
-
-    suspicious_percentage = (
-        suspicious / total
-    ) * 100
+    malicious_percentage = (malicious / total) * 100
+    suspicious_percentage = (suspicious / total) * 100
 
     score = (
         malicious_percentage
@@ -270,59 +244,41 @@ def calculate_fallback_risk(virustotal):
 
     score = min(round(score), 100)
 
-
     # --------------------------------------------------------
     # VERDICT
     # --------------------------------------------------------
-    # The verdict gives priority to the actual number
-    # of malicious detections instead of allowing a large
-    # number of harmless/undetected engines to hide them.
 
-    if malicious >= 5:
-
+    if malicious_percentage >= 20:
         verdict = "LIKELY MALICIOUS"
 
-    elif malicious >= 1:
-
+    elif malicious_percentage >= 5:
         verdict = "SUSPICIOUS"
 
-    elif suspicious >= 3:
-
+    elif suspicious_percentage >= 5:
         verdict = "SUSPICIOUS"
 
     else:
-
         verdict = "LIKELY SAFE"
-
 
     # --------------------------------------------------------
     # CONFIDENCE
     # --------------------------------------------------------
-    # Confidence represents how much VirusTotal evidence
-    # is available, NOT how certain the target is safe.
 
     if total >= 50:
-
         confidence = "High"
 
     elif total >= 20:
-
         confidence = "Medium"
 
     else:
-
         confidence = "Low"
-
-
-    # --------------------------------------------------------
-    # FINAL RESULT
-    # --------------------------------------------------------
 
     return {
         "score": score,
         "verdict": verdict,
         "confidence": confidence
     }
+    
 
 # ============================================================
 # GROQ AI ANALYSIS
