@@ -208,10 +208,14 @@ def get_whois_data(input_type, value):
 
 
 # ============================================================
-# FALLBACK RISK CALCULATION
+# RISK CALCULATION
 # ============================================================
 
 def calculate_fallback_risk(virustotal):
+
+    # --------------------------------------------------------
+    # INSUFFICIENT DATA
+    # --------------------------------------------------------
 
     if not virustotal.get("success"):
 
@@ -241,24 +245,61 @@ def calculate_fallback_risk(virustotal):
             "confidence": "Low"
         }
 
+
+    # --------------------------------------------------------
+    # RISK SCORE
+    # --------------------------------------------------------
+    # Malicious detections have the strongest influence.
+    # Suspicious detections have a smaller influence.
+    #
+    # The score is NOT a probability.
+    # It is an assessment based on VirusTotal detections.
+
+    malicious_percentage = (
+        malicious / total
+    ) * 100
+
+    suspicious_percentage = (
+        suspicious / total
+    ) * 100
+
     score = (
-        (malicious / total) * 100
-        + (suspicious / total) * 50
+        malicious_percentage
+        + (suspicious_percentage * 0.5)
     )
 
     score = min(round(score), 100)
 
-    if score >= 60:
+
+    # --------------------------------------------------------
+    # VERDICT
+    # --------------------------------------------------------
+    # The verdict gives priority to the actual number
+    # of malicious detections instead of allowing a large
+    # number of harmless/undetected engines to hide them.
+
+    if malicious >= 5:
 
         verdict = "LIKELY MALICIOUS"
 
-    elif score >= 20:
+    elif malicious >= 1:
+
+        verdict = "SUSPICIOUS"
+
+    elif suspicious >= 3:
 
         verdict = "SUSPICIOUS"
 
     else:
 
         verdict = "LIKELY SAFE"
+
+
+    # --------------------------------------------------------
+    # CONFIDENCE
+    # --------------------------------------------------------
+    # Confidence represents how much VirusTotal evidence
+    # is available, NOT how certain the target is safe.
 
     if total >= 50:
 
@@ -272,12 +313,16 @@ def calculate_fallback_risk(virustotal):
 
         confidence = "Low"
 
+
+    # --------------------------------------------------------
+    # FINAL RESULT
+    # --------------------------------------------------------
+
     return {
         "score": score,
         "verdict": verdict,
         "confidence": confidence
     }
-
 
 # ============================================================
 # GROQ AI ANALYSIS
